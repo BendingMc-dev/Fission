@@ -1,11 +1,13 @@
 package me.shadowtp.Fission;
 
 import com.projectkorra.projectkorra.GeneralMethods;
+import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.AddonAbility;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.util.DamageHandler;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -177,6 +179,8 @@ public class Fission extends FireAbility implements AddonAbility {
 
     @Override
     public void load() {
+        Bukkit.getPluginManager().registerEvents(new FissionListener(), ProjectKorra.plugin);
+        ProjectKorra.log.info("Can you hear the music...?");
         ConfigManager.getConfig().addDefault(path + "Cooldown", 5000);
         ConfigManager.getConfig().addDefault(path + "Range", 40);
         ConfigManager.getConfig().addDefault(path + "Damage", 5);

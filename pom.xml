@@ -7,6 +7,10 @@
     <groupId>me.shadowtp</groupId>
     <artifactId>Fission</artifactId>
     <version>1.0</version>
+    <packaging>jar</packaging>
+
+    <name>Fission</name>
+
 
     <properties>
         <maven.compiler.source>22</maven.compiler.source>

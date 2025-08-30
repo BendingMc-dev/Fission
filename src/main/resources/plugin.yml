@@ -1,4 +1,0 @@
-name: Fission
-version: '${project.version}'
-main: me.shadowtp.Fission.fission
-api-version: '1.21'
