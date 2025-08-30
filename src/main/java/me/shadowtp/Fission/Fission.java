@@ -5,15 +5,18 @@ import com.projectkorra.projectkorra.ability.AddonAbility;
 import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import org.bukkit.Location;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import org.bukkit.util.Vector;
-import org.bukkit.*;
 
 
+import java.util.Iterator;
 import java.util.List;
+
 
 
 public class Fission extends FireAbility implements AddonAbility {
@@ -26,8 +29,10 @@ public class Fission extends FireAbility implements AddonAbility {
     private final long cooldown;
     @Attribute(Attribute.DAMAGE)
     private final double damage;
+    private double lifetime;
     private int travelled;
     private Vector direction;
+    private double markduration;
 
 
     public Fission(Player player) {
@@ -35,6 +40,7 @@ public class Fission extends FireAbility implements AddonAbility {
         range = getConfig().getDouble(path + "Range");
         cooldown = getConfig().getLong(path + "Cooldown");
         damage = getConfig().getDouble(path + "Damage");
+        markduration = getConfig().getDouble(path + "MarkDuration");
 
         if (!this.bPlayer.canBend(this)){
             return;
@@ -87,33 +93,41 @@ public class Fission extends FireAbility implements AddonAbility {
 
     }
 
-//    public void damage(Location location) {
-//        for (Entity entity : GeneralMethods.getEntitiesAroundPoint(location, 1)) {
-//            if (entity instanceof LivingEntity && entity.getUniqueId() != player.getUniqueId()) {
-//                ((LivingEntity) entity).damage(damage);
-//                return;
-//            }
-//        }
-//    }
-
     public void ApplyFissionMark() {
         int xOffset = 1;
         int yOffset = 1;
         int zOffset = 1;
         int amount = 1;
 
+        long startTime = System.currentTimeMillis();
+
         List<Entity> targets = GeneralMethods.getEntitiesAroundPoint(location, 1);
+        Iterator<Entity> iterator = targets.iterator();
 
-        for (Entity entity : targets){
+
+        for (Entity entity : targets) {
             if (entity instanceof LivingEntity && entity.getUniqueId() != player.getUniqueId()) {
-                location.getWorld().spawnParticle(Particle.WAX_ON, amount, xOffset, yOffset, zOffset);
-                // play funny wax particle? (WaxON).
-                // Particle needs to remain on target for a set duration, after that "lifetime" it can dissipate. simple for loop type shit
 
-                // play sound to target? (maybe)
-                // Keep Target in List
-                // Apply Boom not here.
-                //BigSparkyBoomBoom();
+                while (iterator.hasNext()) {
+                    Entity affected = iterator.next();
+                    Location affectedLocation = affected.getLocation();
+                    Player player = (Player) affected;
+
+                    if (affected.isDead() || !player.isOnline()) {
+                        this.remove();
+                        break;
+                    } else if (affectedLocation != null && GeneralMethods.isRegionProtectedFromBuild(this, this.location)) {
+                        this.remove();
+                        break;
+                    }
+
+                    while (System.currentTimeMillis() - startTime > markduration) {
+                        affectedLocation.getWorld().spawnParticle(Particle.WAX_ON, amount, xOffset, yOffset, zOffset);
+                        affectedLocation.getWorld().playSound(affected, Sound.ENTITY_FIREWORK_ROCKET_TWINKLE, 1, 1);
+                    }
+                    iterator.remove();
+                }
+                return;
             }
         }
     }
@@ -129,22 +143,23 @@ public class Fission extends FireAbility implements AddonAbility {
 
 
     // boring slop
-    @Override
-    public Location getLocation() {
-        return null;
-    }
+
 
     @Override
     public void load() {
-
         ConfigManager.getConfig().addDefault(path + "Cooldown", 5000);
-        ConfigManager.getConfig().addDefault(path + "Range", 15);
-        ConfigManager.getConfig().addDefault(path + "Damage", 15);
+        ConfigManager.getConfig().addDefault(path + "Range", 40);
+        ConfigManager.getConfig().addDefault(path + "Damage", 5);
+        ConfigManager.getConfig().addDefault(path + "MarkDuration", 5000);
     }
 
     @Override
     public void stop() {
 
+    }
+    @Override
+    public Location getLocation() {
+        return location;
     }
 
     @Override
@@ -185,6 +200,6 @@ public class Fission extends FireAbility implements AddonAbility {
 
     @Override
     public String getVersion() {
-        return "Suck my Nuts";
+        return "1.0";
     }
 }
