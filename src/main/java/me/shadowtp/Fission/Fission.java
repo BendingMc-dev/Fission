@@ -179,7 +179,8 @@ public class Fission extends FireAbility implements AddonAbility {
 
     @Override
     public void load() {
-        Bukkit.getPluginManager().registerEvents(new FissionListener(), ProjectKorra.plugin);
+        ProjectKorra.plugin.getServer().getPluginManager().registerEvents(new FissionListener(), ProjectKorra.plugin);
+
         ProjectKorra.log.info("Can you hear the music...?");
         ConfigManager.getConfig().addDefault(path + "Cooldown", 5000);
         ConfigManager.getConfig().addDefault(path + "Range", 40);
