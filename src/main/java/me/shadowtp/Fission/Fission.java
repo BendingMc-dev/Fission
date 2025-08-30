@@ -2,8 +2,10 @@ package me.shadowtp.Fission;
 
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.AddonAbility;
+import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
+import com.projectkorra.projectkorra.util.DamageHandler;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -29,10 +31,14 @@ public class Fission extends FireAbility implements AddonAbility {
     private final long cooldown;
     @Attribute(Attribute.DAMAGE)
     private final double damage;
-    private double lifetime;
     private int travelled;
     private Vector direction;
     private double markduration;
+    public boolean isMarked;
+    public List<Entity> targets = GeneralMethods.getEntitiesAroundPoint(location, 1);
+    public Iterator<Entity> iterator = targets.iterator();
+
+
 
 
     public Fission(Player player) {
@@ -74,6 +80,7 @@ public class Fission extends FireAbility implements AddonAbility {
             int zOffset = 1;
             int amount = 1;
 
+
             location = location.add(direction.clone().multiply(travelled));
 
             if (GeneralMethods.isSolid(location.getBlock()) || isWater(location.getBlock())) {
@@ -88,6 +95,10 @@ public class Fission extends FireAbility implements AddonAbility {
             playFirebendingParticles(location, amount, xOffset, yOffset, zOffset);
             ApplyFissionMark();
 
+            // figure it out brain
+            // if the player is marked, apply BigSparkyBoomBoom
+            // isMarked = true;
+
             travelled++;
         }
 
@@ -100,9 +111,9 @@ public class Fission extends FireAbility implements AddonAbility {
         int amount = 1;
 
         long startTime = System.currentTimeMillis();
+        targets = GeneralMethods.getEntitiesAroundPoint(location, 1);
 
-        List<Entity> targets = GeneralMethods.getEntitiesAroundPoint(location, 1);
-        Iterator<Entity> iterator = targets.iterator();
+
 
 
         for (Entity entity : targets) {
@@ -124,17 +135,34 @@ public class Fission extends FireAbility implements AddonAbility {
                     while (System.currentTimeMillis() - startTime > markduration) {
                         affectedLocation.getWorld().spawnParticle(Particle.WAX_ON, amount, xOffset, yOffset, zOffset);
                         affectedLocation.getWorld().playSound(affected, Sound.ENTITY_FIREWORK_ROCKET_TWINKLE, 1, 1);
+                        isMarked = true;
                     }
                     iterator.remove();
+                    isMarked = false;
                 }
                 return;
             }
         }
     }
 
-    public void BigSparkyBoomBoom(){
-        // sanity.
-            // ijogredjije
+    public void BigSparkyBoomBoom() {
+        int xOffset = 1;
+        int yOffset = 1;
+        int zOffset = 1;
+        int amount = 1;
+
+        Entity thingy = iterator.next();
+
+
+        if (!isMarked || targets == null || targets.isEmpty()) {
+            return;
+        }
+        location.getWorld().spawnParticle(Particle.EXPLOSION,amount, xOffset, yOffset, zOffset);
+        location.getWorld().playSound(thingy, Sound.ENTITY_GENERIC_EXPLODE, 1, 1);
+
+        DamageHandler.damageEntity(thingy,damage, CoreAbility.getAbility(Fission.class));
+
+
     }
 
 
@@ -143,7 +171,9 @@ public class Fission extends FireAbility implements AddonAbility {
 
 
     // boring slop
-
+    public boolean getMarked() {
+        return isMarked;
+    }
 
     @Override
     public void load() {
@@ -189,7 +219,7 @@ public class Fission extends FireAbility implements AddonAbility {
 
     @Override
     public String getDescription(){
-        return "Fingers in me bum";
+        return "Fingers in me bum ATM: Sneak to mark, left click to detonate";
     }
 
 

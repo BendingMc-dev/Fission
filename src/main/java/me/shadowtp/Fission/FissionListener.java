@@ -1,6 +1,7 @@
 package me.shadowtp.Fission;
 
 import com.projectkorra.projectkorra.BendingPlayer;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -24,13 +25,17 @@ public class FissionListener implements Listener {
     @EventHandler
     public void onPlayerClick(PlayerInteractEvent event){
         if (event.getAction().isLeftClick()){
+            Player player = event.getPlayer();
             BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(event.getPlayer());
-            if (bPlayer != null){
-                if (bPlayer.getBoundAbilityName().equals("Fission")){
+            Fission fission = new Fission((Player)bPlayer);
+
+            if (bPlayer != null && !fission.getMarked()) {
+                if (bPlayer.getBoundAbilityName().equals("Fission")) {
                     new Fission(event.getPlayer());
+                }
+            } else if (fission.getMarked()) {
+                fission.BigSparkyBoomBoom();
                 }
             }
         }
     }
-
-}
