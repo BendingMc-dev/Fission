@@ -15,16 +15,14 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import org.bukkit.util.Vector;
-
-
+import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
-
+import java.util.Set;
 
 
 public class Fission extends FireAbility implements AddonAbility {
 
-    private final String path = "ExtraAbilties.ShadowTP.Fission.";
+    private final String path = "ExtraAbilities.ShadowTP.Fission.";
     private Location location;
     @Attribute(Attribute.RANGE)
     private final double range;
@@ -32,12 +30,16 @@ public class Fission extends FireAbility implements AddonAbility {
     private final long cooldown;
     @Attribute(Attribute.DAMAGE)
     private final double damage;
+    private final double speed;
     private int travelled;
     private Vector direction;
     private final double markduration;
-    public boolean isMarked;
-    public List<Entity> targets;
+    public Set<Entity> targets = new HashSet<>();
     public Iterator<Entity> iterator;
+    public int maxspread;
+    public int hitbox;
+    private boolean isMarked = false;
+
 
 
 
@@ -48,9 +50,12 @@ public class Fission extends FireAbility implements AddonAbility {
         cooldown = getConfig().getLong(path + "Cooldown");
         damage = getConfig().getDouble(path + "Damage");
         markduration = getConfig().getDouble(path + "MarkDuration");
-        location = player.getLocation().clone();
-        targets = GeneralMethods.getEntitiesAroundPoint(location, 1);
-        iterator = targets.iterator();
+        maxspread = getConfig().getInt(path + "MaxSpread");
+        speed = getConfig().getDouble(path + "Speed");
+        hitbox = getConfig().getInt(path + "Hitbox");
+        location = player.getEyeLocation().clone();
+
+
 
         if (!this.bPlayer.canBend(this)){
             return;
@@ -63,9 +68,6 @@ public class Fission extends FireAbility implements AddonAbility {
 
     @Override //equivalent of Update/FixedUpdate() called each frame/tick
     public void progress() {
-        direction = player.getEyeLocation().getDirection().clone().normalize();
-
-
         /// Sanity Checks
         if (this.player.isDead() || !this.player.isOnline()) {
             this.remove();
@@ -79,45 +81,57 @@ public class Fission extends FireAbility implements AddonAbility {
         // While Progressing
         while (travelled <= range) {
 
-            int xOffset = 1;
-            int yOffset = 1;
-            int zOffset = 1;
+            int xOffset = 0;
+            int yOffset = 0;
+            int zOffset = 0;
             int amount = 1;
 
-
-            assert location != null;
-            location = location.add(direction.clone().multiply(travelled));
+            direction = player.getEyeLocation().getDirection();
+            location = location.add(direction.clone().multiply(speed));
 
             if (GeneralMethods.isSolid(location.getBlock()) || isWater(location.getBlock())) {
                 break;
             }
-            if (travelled >= range) {
+            if (travelled > range) {
                 remove();
                 break;
             }
+            double t = travelled / range;
+            double curve = Math.sin(Math.PI * t) * maxspread;
 
-            playFirebendingSound(location);
-            playFirebendingParticles(location, amount, xOffset, yOffset, zOffset);
-            ApplyFissionMark();
+            Vector perpendicular = direction.clone().crossProduct(new Vector(0, 1, 0)).normalize();
 
-            // figure it out brain
-            // if the player is marked, apply BigSparkyBoomBoom
-            // isMarked = true;
+            Location left = location.clone().add(perpendicular.clone().multiply(curve));
+            Location right = location.clone().add(perpendicular.clone().multiply(-curve));
+
+
+            playFirebendingSound(left);
+            playFirebendingSound(right);
+
+            playFirebendingParticles(left, amount, xOffset, yOffset, zOffset);
+            playFirebendingParticles(right, amount, xOffset, yOffset, zOffset);
+
+            ApplyFissionMark(left, right);
+
 
             travelled++;
         }
 
     }
 
-    public void ApplyFissionMark() {
-        int xOffset = 1;
-        int yOffset = 1;
-        int zOffset = 1;
-        int amount = 1;
+    public void ApplyFissionMark(Location left, Location right) {
+        int xOffset = 0;
+        int yOffset = 0;
+        int zOffset = 0;
+        int amount = 3;
 
-        long startTime = System.currentTimeMillis();
-        targets = GeneralMethods.getEntitiesAroundPoint(location, 1);
+        long startTime = getStartTime();
+        targets = new HashSet<>();
+        targets.addAll(GeneralMethods.getEntitiesAroundPoint(left, hitbox));
+        targets.addAll(GeneralMethods.getEntitiesAroundPoint(right, hitbox));
 
+        iterator = targets.iterator();
+        long currenttime = System.currentTimeMillis();
 
         for (Entity entity : targets) {
             if (entity instanceof LivingEntity && entity.getUniqueId() != player.getUniqueId()) {
@@ -125,19 +139,26 @@ public class Fission extends FireAbility implements AddonAbility {
                 while (iterator.hasNext()) {
                     Entity affected = iterator.next();
                     Location affectedLocation = affected.getLocation();
-                    Player player = (Player) affected;
+                    //Player player = (Player) affected;  -> Casted to player, game dont like!
+                    LivingEntity victim = (LivingEntity) affected;
+                    //ProjectKorra.log.info("He was in paris?");
 
-                    if (affected.isDead() || !player.isOnline()) {
+
+                    if (victim.isDead()) {
                         this.remove();
+                        ProjectKorra.log.severe("George?"); //never see?
                         break;
                     } else if (affectedLocation != null && GeneralMethods.isRegionProtectedFromBuild(this, this.location)) {
                         this.remove();
+                        ProjectKorra.log.severe("HBadd bugaer?");
                         break;
                     }
 
-                    while (System.currentTimeMillis() - startTime > markduration) {
+                    if (currenttime - startTime >= markduration) {
                         affectedLocation.getWorld().spawnParticle(Particle.WAX_ON, amount, xOffset, yOffset, zOffset);
                         affectedLocation.getWorld().playSound(affected, Sound.ENTITY_FIREWORK_ROCKET_TWINKLE, 1, 1);
+                        //DamageHandler.damageEntity(victim,damage, CoreAbility.getAbility(Fission.class));
+                        ProjectKorra.log.severe("Who was in paris?");
                         isMarked = true;
                     }
                     iterator.remove();
@@ -152,14 +173,17 @@ public class Fission extends FireAbility implements AddonAbility {
         int xOffset = 1;
         int yOffset = 1;
         int zOffset = 1;
-        int amount = 1;
+        int amount = 5;
 
+
+        if (!iterator.hasNext()) { return; }
         Entity thingy = iterator.next();
         location = thingy.getLocation().clone();
 
-        if (!isMarked || targets == null || targets.isEmpty()) {
+        if (targets == null || targets.isEmpty()) {
             return;
         }
+
         location.getWorld().spawnParticle(Particle.EXPLOSION,amount, xOffset, yOffset, zOffset);
         location.getWorld().playSound(thingy, Sound.ENTITY_GENERIC_EXPLODE, 1, 1);
 
@@ -170,21 +194,24 @@ public class Fission extends FireAbility implements AddonAbility {
 
 
 
-    // boring slop
-    public List<Entity> getTargets() {
+
+    public Set<Entity> getTargets() {
         return targets;
     }
 
+    // boring slop
     @Override
     public void load() {
         ProjectKorra.plugin.getServer().getPluginManager().registerEvents(new FissionListener(), ProjectKorra.plugin);
         ProjectKorra.log.info("Fission successfully loaded!");
-
         ProjectKorra.log.info("Can you hear the music...?");
         ConfigManager.getConfig().addDefault(path + "Cooldown", 5000);
         ConfigManager.getConfig().addDefault(path + "Range", 40);
         ConfigManager.getConfig().addDefault(path + "Damage", 5);
         ConfigManager.getConfig().addDefault(path + "MarkDuration", 5000);
+        ConfigManager.getConfig().addDefault(path + "MaxSpread", 2);
+        ConfigManager.getConfig().addDefault(path + "Speed", 0.2);
+        ConfigManager.getConfig().addDefault(path + "Hitbox", 1);
 
         ConfigManager.defaultConfig.save();
     }
@@ -221,12 +248,12 @@ public class Fission extends FireAbility implements AddonAbility {
 
     @Override
     public String getInstructions(){
-        return "Combo!";
+        return "Left Click to Mark, Sneak to Detonate!";
     }
 
     @Override
     public String getDescription(){
-        return "Fingers in me bum ATM: Sneak to mark, left click to detonate";
+        return "Fingers in me bum ATM";
     }
 
 
