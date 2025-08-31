@@ -13,10 +13,9 @@ public class FissionListener implements Listener {
     public void onPlayerSneak(PlayerToggleSneakEvent event){
         if (event.isSneaking()){
             BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(event.getPlayer());
-
-            if (bPlayer != null){
+            if (bPlayer != null)   {
                 if (bPlayer.getBoundAbilityName().equals("Fission")){
-                    new Fission(event.getPlayer());
+                    new Fission((Player)bPlayer);
                 }
             }
         }
@@ -25,17 +24,16 @@ public class FissionListener implements Listener {
     @EventHandler
     public void onPlayerClick(PlayerInteractEvent event){
         if (event.getAction().isLeftClick()){
-            Player player = event.getPlayer();
             BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(event.getPlayer());
             Fission fission = new Fission((Player)bPlayer);
 
-            if (bPlayer != null && !fission.getMarked()) {
+            if (bPlayer != null && fission.getTargets() == null) {
                 if (bPlayer.getBoundAbilityName().equals("Fission")) {
-                    new Fission(event.getPlayer());
+                    new Fission((Player)bPlayer);
                 }
-            } else if (fission.getMarked()) {
+            } else if (fission.getTargets() != null) {
                 fission.BigSparkyBoomBoom();
-                }
             }
         }
     }
+}

@@ -7,7 +7,6 @@ import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.util.DamageHandler;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -35,10 +34,10 @@ public class Fission extends FireAbility implements AddonAbility {
     private final double damage;
     private int travelled;
     private Vector direction;
-    private double markduration;
+    private final double markduration;
     public boolean isMarked;
-    public List<Entity> targets = GeneralMethods.getEntitiesAroundPoint(location, 1);
-    public Iterator<Entity> iterator = targets.iterator();
+    public List<Entity> targets;
+    public Iterator<Entity> iterator;
 
 
 
@@ -49,6 +48,9 @@ public class Fission extends FireAbility implements AddonAbility {
         cooldown = getConfig().getLong(path + "Cooldown");
         damage = getConfig().getDouble(path + "Damage");
         markduration = getConfig().getDouble(path + "MarkDuration");
+        location = player.getLocation().clone();
+        targets = GeneralMethods.getEntitiesAroundPoint(location, 1);
+        iterator = targets.iterator();
 
         if (!this.bPlayer.canBend(this)){
             return;
@@ -83,6 +85,7 @@ public class Fission extends FireAbility implements AddonAbility {
             int amount = 1;
 
 
+            assert location != null;
             location = location.add(direction.clone().multiply(travelled));
 
             if (GeneralMethods.isSolid(location.getBlock()) || isWater(location.getBlock())) {
@@ -114,8 +117,6 @@ public class Fission extends FireAbility implements AddonAbility {
 
         long startTime = System.currentTimeMillis();
         targets = GeneralMethods.getEntitiesAroundPoint(location, 1);
-
-
 
 
         for (Entity entity : targets) {
@@ -154,6 +155,7 @@ public class Fission extends FireAbility implements AddonAbility {
         int amount = 1;
 
         Entity thingy = iterator.next();
+        location = thingy.getLocation().clone();
 
 
         if (!isMarked || targets == null || targets.isEmpty()) {
@@ -171,25 +173,28 @@ public class Fission extends FireAbility implements AddonAbility {
 
 
 
-
     // boring slop
-    public boolean getMarked() {
-        return isMarked;
+    public List<Entity> getTargets() {
+        return targets;
     }
 
     @Override
     public void load() {
         ProjectKorra.plugin.getServer().getPluginManager().registerEvents(new FissionListener(), ProjectKorra.plugin);
+        ProjectKorra.log.info("Fission successfully loaded!");
 
         ProjectKorra.log.info("Can you hear the music...?");
         ConfigManager.getConfig().addDefault(path + "Cooldown", 5000);
         ConfigManager.getConfig().addDefault(path + "Range", 40);
         ConfigManager.getConfig().addDefault(path + "Damage", 5);
         ConfigManager.getConfig().addDefault(path + "MarkDuration", 5000);
+
+        ConfigManager.defaultConfig.save();
     }
 
     @Override
     public void stop() {
+        this.remove();
 
     }
     @Override
