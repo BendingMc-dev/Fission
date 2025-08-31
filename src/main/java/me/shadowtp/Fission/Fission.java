@@ -157,7 +157,6 @@ public class Fission extends FireAbility implements AddonAbility {
         Entity thingy = iterator.next();
         location = thingy.getLocation().clone();
 
-
         if (!isMarked || targets == null || targets.isEmpty()) {
             return;
         }
@@ -165,8 +164,6 @@ public class Fission extends FireAbility implements AddonAbility {
         location.getWorld().playSound(thingy, Sound.ENTITY_GENERIC_EXPLODE, 1, 1);
 
         DamageHandler.damageEntity(thingy,damage, CoreAbility.getAbility(Fission.class));
-
-
     }
 
 
