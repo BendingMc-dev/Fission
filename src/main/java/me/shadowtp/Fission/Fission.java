@@ -3,10 +3,10 @@ package me.shadowtp.Fission;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.AddonAbility;
-import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.util.DamageHandler;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -15,9 +15,8 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import org.bukkit.util.Vector;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
+
+import java.util.*;
 
 
 public class Fission extends FireAbility implements AddonAbility {
@@ -33,12 +32,11 @@ public class Fission extends FireAbility implements AddonAbility {
     private final double speed;
     private int travelled;
     private Vector direction;
-    private final double markduration;
+    private final long markduration;
     public Set<Entity> targets = new HashSet<>();
-    public Iterator<Entity> iterator;
     public int maxspread;
     public int hitbox;
-    private boolean isMarked = false;
+    public HashMap<UUID, Long> markedTarget = new HashMap<>();
 
 
 
@@ -49,7 +47,7 @@ public class Fission extends FireAbility implements AddonAbility {
         range = getConfig().getDouble(path + "Range");
         cooldown = getConfig().getLong(path + "Cooldown");
         damage = getConfig().getDouble(path + "Damage");
-        markduration = getConfig().getDouble(path + "MarkDuration");
+        markduration = getConfig().getLong(path + "MarkDuration");
         maxspread = getConfig().getInt(path + "MaxSpread");
         speed = getConfig().getDouble(path + "Speed");
         hitbox = getConfig().getInt(path + "Hitbox");
@@ -116,88 +114,135 @@ public class Fission extends FireAbility implements AddonAbility {
 
             travelled++;
         }
+        handleMarkedEntities();
 
     }
 
     public void ApplyFissionMark(Location left, Location right) {
-        int xOffset = 0;
-        int yOffset = 0;
-        int zOffset = 0;
-        int amount = 3;
-
         long startTime = getStartTime();
         targets = new HashSet<>();
         targets.addAll(GeneralMethods.getEntitiesAroundPoint(left, hitbox));
         targets.addAll(GeneralMethods.getEntitiesAroundPoint(right, hitbox));
 
-        iterator = targets.iterator();
-        long currenttime = System.currentTimeMillis();
-
         for (Entity entity : targets) {
-            if (entity instanceof LivingEntity && entity.getUniqueId() != player.getUniqueId()) {
+            if (!(entity instanceof LivingEntity)) return;
+            if (entity.getUniqueId().equals(player.getUniqueId())) return;
 
-                while (iterator.hasNext()) {
-                    Entity affected = iterator.next();
-                    Location affectedLocation = affected.getLocation();
-                    //Player player = (Player) affected;  -> Casted to player, game dont like!
-                    LivingEntity victim = (LivingEntity) affected;
-                    //ProjectKorra.log.info("He was in paris?");
+            LivingEntity victim = (LivingEntity) entity;
+            Location affectedLocation = victim.getLocation();
 
+            if (victim.isDead()) {
+                this.remove();
+                ProjectKorra.log.severe("George?");
+                break;
+            } else if (affectedLocation != null && GeneralMethods.isRegionProtectedFromBuild(this, this.location)) {
+                this.remove();
+                ProjectKorra.log.severe("HBadd bugaer?");
+                break;
+            }
 
-                    if (victim.isDead()) {
-                        this.remove();
-                        ProjectKorra.log.severe("George?"); //never see?
-                        break;
-                    } else if (affectedLocation != null && GeneralMethods.isRegionProtectedFromBuild(this, this.location)) {
-                        this.remove();
-                        ProjectKorra.log.severe("HBadd bugaer?");
-                        break;
-                    }
-
-                    if (currenttime - startTime >= markduration) {
-                        affectedLocation.getWorld().spawnParticle(Particle.WAX_ON, amount, xOffset, yOffset, zOffset);
-                        affectedLocation.getWorld().playSound(affected, Sound.ENTITY_FIREWORK_ROCKET_TWINKLE, 1, 1);
-                        //DamageHandler.damageEntity(victim,damage, CoreAbility.getAbility(Fission.class));
-                        ProjectKorra.log.severe("Who was in paris?");
-                        isMarked = true;
-                    }
-                    iterator.remove();
-                    isMarked = false;
+                if (markedTarget.containsKey(victim.getUniqueId())) {
+                    return;
                 }
+
+                markedTarget.put(victim.getUniqueId(), startTime);
+                ProjectKorra.log.severe("Marked entity: " + victim.getUniqueId() + "Type:" + victim.getType());
+
+        }
+    }
+
+
+    public void BigSparkyBoomBoom() {
+        ProjectKorra.log.info("Big Sparky Boom Boom");
+
+        if (markedTarget.isEmpty()) { return; }
+
+        for (Map.Entry<UUID, Long> entry : markedTarget.entrySet()) {
+            UUID markedEntity = entry.getKey();
+            Long markedTime = entry.getValue();
+
+            Entity victim = Bukkit.getEntity(markedEntity);
+
+            if (System.currentTimeMillis() - markedTime >= markduration) {
+                this.remove();
+                break;
+            } else if (victim == null || victim.isDead()) {
                 return;
+            } else if (!(victim instanceof LivingEntity)) {
+                return;
+            }
+            Location affectedLocation = victim.getLocation().clone();
+
+            affectedLocation.getWorld().spawnParticle(Particle.EXPLOSION, affectedLocation, 5, 1, 1, 1, 0.1);
+            affectedLocation.getWorld().spawnParticle(Particle.FLAME, affectedLocation, 20, 2, 2, 2, 0.2);
+
+
+            affectedLocation.getWorld().playSound(victim, Sound.ENTITY_GENERIC_EXPLODE, 0.25f, 1);
+            DamageHandler.damageEntity(victim, damage, this);
+
+
+
+        }
+        markedTarget.clear();
+        this.remove();
+    }
+    private void handleMarkedEntities() {
+        if (markedTarget.isEmpty()) {
+            return;
+        }
+
+        long currentTime = System.currentTimeMillis();
+        Iterator<Map.Entry<UUID, Long>> iter = markedTarget.entrySet().iterator();
+
+        while (iter.hasNext()) {
+            Map.Entry<UUID, Long> entry = iter.next();
+            UUID entityUUID = entry.getKey();
+            Long markTime = entry.getValue();
+
+            if (currentTime - markTime >= markduration) {
+                iter.remove();
+                ProjectKorra.log.info("Mark expired for entity: " + entityUUID);
+                continue;
+            }
+
+            Entity entity = Bukkit.getEntity(entityUUID);
+            if (entity == null || entity.isDead()) {
+                iter.remove();
+                ProjectKorra.log.info("Removed mark from null/dead entity");
+                continue;
+            }
+
+            if (entity instanceof LivingEntity) {
+                LivingEntity victim = (LivingEntity) entity;
+                Location affectedLocation = victim.getLocation();
+
+                if (GeneralMethods.isRegionProtectedFromBuild(this, affectedLocation)) {
+                    iter.remove();
+                    ProjectKorra.log.info("Removed mark from protected region");
+                    continue;
+                }
+
+                affectedLocation.getWorld().spawnParticle(Particle.WAX_ON, affectedLocation, 5, 0.2, 0.5, 0.2, 0.1);
+                ProjectKorra.log.info("Spawning particle wax");
+
+                if ((currentTime - markTime) % 1000 < 50) {
+                    affectedLocation.getWorld().playSound(affectedLocation, Sound.ENTITY_FIREWORK_ROCKET_TWINKLE, 2f, 1.2f);
+                    ProjectKorra.log.info("Playing sound firework");
+                }
+
+            } else {
+                iter.remove();
             }
         }
     }
 
-    public void BigSparkyBoomBoom() {
-        int xOffset = 1;
-        int yOffset = 1;
-        int zOffset = 1;
-        int amount = 5;
 
 
-        if (!iterator.hasNext()) { return; }
-        Entity thingy = iterator.next();
-        location = thingy.getLocation().clone();
 
-        if (targets == null || targets.isEmpty()) {
-            return;
-        }
-
-        location.getWorld().spawnParticle(Particle.EXPLOSION,amount, xOffset, yOffset, zOffset);
-        location.getWorld().playSound(thingy, Sound.ENTITY_GENERIC_EXPLODE, 1, 1);
-
-        DamageHandler.damageEntity(thingy,damage, CoreAbility.getAbility(Fission.class));
+    public HashMap<UUID, Long> getMarked() {
+        return markedTarget;
     }
 
-
-
-
-
-
-    public Set<Entity> getTargets() {
-        return targets;
-    }
 
     // boring slop
     @Override

@@ -1,6 +1,7 @@
 package me.shadowtp.Fission;
 
 import com.projectkorra.projectkorra.BendingPlayer;
+import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -14,16 +15,23 @@ public class FissionListener implements Listener {
     public void onPlayerSneak(PlayerToggleSneakEvent event){
         Player player = event.getPlayer();
         Fission fission = CoreAbility.getAbility(player, Fission.class);
-
         BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
 
-        if (event.isSneaking()){
+
+        if (event.isSneaking()) {
             if (bPlayer != null && fission != null) {
                 if (bPlayer.getBoundAbilityName().equals("Fission")) {
-                    if (!fission.getTargets().isEmpty() || fission.getTargets() == null) {
+                    if (!fission.getMarked().isEmpty()) {
+                        ProjectKorra.log.info("Triggering BigSparkyBoomBoom!");
                         fission.BigSparkyBoomBoom();
+                    } else {
+                        ProjectKorra.log.info("No marked entities to detonate");
                     }
+                } else {
+                    ProjectKorra.log.info("Wrong ability bound: " + bPlayer.getBoundAbilityName());
                 }
+            } else {
+                ProjectKorra.log.info("Missing bPlayer or fission instance");
             }
         }
     }
