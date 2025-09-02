@@ -177,7 +177,7 @@ public class Fission extends FireAbility implements AddonAbility {
             affectedLocation.getWorld().spawnParticle(Particle.FLAME, affectedLocation, 20, 2, 2, 2, 0.2);
 
 
-            affectedLocation.getWorld().playSound(victim, Sound.ENTITY_GENERIC_EXPLODE, 0.25f, 1);
+            affectedLocation.getWorld().playSound(victim, Sound.ENTITY_GENERIC_EXPLODE, 2f, 1);
             DamageHandler.damageEntity(victim, damage, this);
 
 
