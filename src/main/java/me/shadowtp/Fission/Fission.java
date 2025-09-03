@@ -6,6 +6,7 @@ import com.projectkorra.projectkorra.ability.AddonAbility;
 import com.projectkorra.projectkorra.ability.FireAbility;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.util.DamageHandler;
+import com.projectkorra.projectkorra.util.ParticleEffect;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -66,7 +67,7 @@ public class Fission extends FireAbility implements AddonAbility {
 
     @Override //equivalent of Update/FixedUpdate() called each frame/tick
     public void progress() {
-        /// Sanity Checks
+        // Sanity Checks
         if (this.player.isDead() || !this.player.isOnline()) {
             this.remove();
             return;
@@ -74,9 +75,7 @@ public class Fission extends FireAbility implements AddonAbility {
             this.remove();
             return;
         }
-
-
-        // While Progressing
+        //While Progressing
         while (travelled <= range) {
 
             int xOffset = 0;
@@ -85,7 +84,8 @@ public class Fission extends FireAbility implements AddonAbility {
             int amount = 1;
 
             direction = player.getEyeLocation().getDirection();
-            location = location.add(direction.clone().multiply(speed));
+            direction.multiply(1);
+            location = location.add(direction);
 
             if (GeneralMethods.isSolid(location.getBlock()) || isWater(location.getBlock())) {
                 break;
@@ -94,35 +94,34 @@ public class Fission extends FireAbility implements AddonAbility {
                 remove();
                 break;
             }
-            double t = travelled / range;
-            double curve = Math.sin(Math.PI * t) * maxspread;
 
-            Vector perpendicular = direction.clone().crossProduct(new Vector(0, 1, 0)).normalize();
+            // Particles & Sounds
+            //-------------------------------------
+            //playFirebendingSound(location);
+            location.getWorld().playSound(location, Sound.ENTITY_CREEPER_PRIMED, 1, 2f);
 
-            Location left = location.clone().add(perpendicular.clone().multiply(curve));
-            Location right = location.clone().add(perpendicular.clone().multiply(-curve));
-
-
-            playFirebendingSound(left);
-            playFirebendingSound(right);
-
-            playFirebendingParticles(left, amount, xOffset, yOffset, zOffset);
-            playFirebendingParticles(right, amount, xOffset, yOffset, zOffset);
-
-            ApplyFissionMark(left, right);
+            //playFirebendingParticles(location, amount, xOffset, yOffset, zOffset);
+            ParticleEffect.CAMPFIRE_COSY_SMOKE.display(location, amount, xOffset, yOffset, zOffset);
+            ParticleEffect.SMOKE_NORMAL.display(location, amount, xOffset, yOffset, zOffset);
+            //location.getWorld().spawnParticle(Particle.CAMPFIRE_SIGNAL_SMOKE, xOffset, yOffset, zOffset, amount); <-- not working for me, can try again later.
+            //------------------------------------
+            ApplyFissionMark(location);
 
 
             travelled++;
         }
+
+
+
         handleMarkedEntities();
 
     }
 
-    public void ApplyFissionMark(Location left, Location right) {
+
+    public void ApplyFissionMark(Location loc) {
         long startTime = getStartTime();
         targets = new HashSet<>();
-        targets.addAll(GeneralMethods.getEntitiesAroundPoint(left, hitbox));
-        targets.addAll(GeneralMethods.getEntitiesAroundPoint(right, hitbox));
+        targets.addAll(GeneralMethods.getEntitiesAroundPoint(loc, hitbox));
 
         for (Entity entity : targets) {
             if (!(entity instanceof LivingEntity)) return;
@@ -157,33 +156,82 @@ public class Fission extends FireAbility implements AddonAbility {
 
         if (markedTarget.isEmpty()) { return; }
 
-        for (Map.Entry<UUID, Long> entry : markedTarget.entrySet()) {
+        Iterator<Map.Entry<UUID, Long>> iter = markedTarget.entrySet().iterator();
+
+        while (iter.hasNext()) {
+
+            Map.Entry<UUID, Long> entry = iter.next();
+
             UUID markedEntity = entry.getKey();
             Long markedTime = entry.getValue();
+
 
             Entity victim = Bukkit.getEntity(markedEntity);
 
             if (System.currentTimeMillis() - markedTime >= markduration) {
-                this.remove();
-                break;
+                iter.remove();
+                continue;
             } else if (victim == null || victim.isDead()) {
-                return;
+                iter.remove();
+                continue;
             } else if (!(victim instanceof LivingEntity)) {
-                return;
+                iter.remove();
+                continue;
             }
             Location affectedLocation = victim.getLocation().clone();
+            Location playerLocation = player.getLocation().clone();
+
+            double distanceToVictim = playerLocation.distance(affectedLocation);
+            int dynamicRange = (int) Math.ceil(distanceToVictim);
+            Vector directionToPlayer = playerLocation.toVector().subtract(affectedLocation.toVector()).normalize();
+            Location projectileLocation = affectedLocation.clone();
+            int projectileTravelled = 0;
+
 
             affectedLocation.getWorld().spawnParticle(Particle.EXPLOSION, affectedLocation, 5, 1, 1, 1, 0.1);
             affectedLocation.getWorld().spawnParticle(Particle.FLAME, affectedLocation, 20, 2, 2, 2, 0.2);
 
 
             affectedLocation.getWorld().playSound(victim, Sound.ENTITY_GENERIC_EXPLODE, 2f, 1);
+            while (projectileTravelled <= dynamicRange) {
+                ProjectKorra.log.info("DistanceToVictim:" + distanceToVictim + "\nDynamic Range:" + dynamicRange + "\n");
+                int xOffset = 0;
+                int yOffset = 0;
+                int zOffset = 0;
+                int amount = 1;
+
+                projectileLocation = projectileLocation.add(directionToPlayer.clone().multiply(1));
+
+                if (GeneralMethods.isSolid(projectileLocation.getBlock()) || isWater(projectileLocation.getBlock())) {
+                    ProjectKorra.log.info("solid nonce");
+                    break;
+                }
+                if (projectileTravelled >= dynamicRange) {
+                    ProjectKorra.log.info("fuck ass range brah");
+                    break;
+                }
+
+                // Calculate curves effect
+                double t = (double) projectileTravelled / dynamicRange;
+                double curve = Math.sin(Math.PI * t) * maxspread;
+
+                Vector perpendicular = directionToPlayer.clone().crossProduct(new Vector(0, 1, 0)).normalize();
+
+                Location left = projectileLocation.clone().add(perpendicular.clone().multiply(curve));
+                Location right = projectileLocation.clone().add(perpendicular.clone().multiply(-curve));
+
+                playFirebendingSound(left);
+                playFirebendingSound(right);
+
+                playFirebendingParticles(left, amount, xOffset, yOffset, zOffset);
+                playFirebendingParticles(right, amount, xOffset, yOffset, zOffset);
+
+                projectileTravelled++;
+            }
             DamageHandler.damageEntity(victim, damage, this);
-
-
+            iter.remove();
 
         }
-        markedTarget.clear();
         this.remove();
     }
     private void handleMarkedEntities() {
@@ -219,15 +267,13 @@ public class Fission extends FireAbility implements AddonAbility {
                 if (GeneralMethods.isRegionProtectedFromBuild(this, affectedLocation)) {
                     iter.remove();
                     ProjectKorra.log.info("Removed mark from protected region");
-                    continue;
+                    break;
                 }
 
                 affectedLocation.getWorld().spawnParticle(Particle.WAX_ON, affectedLocation, 5, 0.2, 0.5, 0.2, 0.1);
-                ProjectKorra.log.info("Spawning particle wax");
 
                 if ((currentTime - markTime) % 1000 < 50) {
-                    affectedLocation.getWorld().playSound(affectedLocation, Sound.ENTITY_FIREWORK_ROCKET_TWINKLE, 2f, 1.2f);
-                    ProjectKorra.log.info("Playing sound firework");
+                    affectedLocation.getWorld().playSound(affectedLocation, Sound.ENTITY_FIREWORK_ROCKET_TWINKLE, 2f, 2f);
                 }
 
             } else {
