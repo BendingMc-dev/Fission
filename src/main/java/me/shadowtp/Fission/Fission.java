@@ -65,9 +65,8 @@ public class Fission extends FireAbility implements AddonAbility {
         start();
     }
 
-    @Override //equivalent of Update/FixedUpdate() called each frame/tick
+    @Override
     public void progress() {
-        // Sanity Checks
         if (this.player.isDead() || !this.player.isOnline()) {
             this.remove();
             return;
@@ -75,7 +74,6 @@ public class Fission extends FireAbility implements AddonAbility {
             this.remove();
             return;
         }
-        //While Progressing
         while (travelled <= range) {
 
             int xOffset = 0;
@@ -95,16 +93,11 @@ public class Fission extends FireAbility implements AddonAbility {
                 break;
             }
 
-            // Particles & Sounds
-            //-------------------------------------
-            //playFirebendingSound(location);
+
             location.getWorld().playSound(location, Sound.ENTITY_CREEPER_PRIMED, 1, 2f);
 
-            //playFirebendingParticles(location, amount, xOffset, yOffset, zOffset);
             ParticleEffect.CAMPFIRE_COSY_SMOKE.display(location, amount, xOffset, yOffset, zOffset);
             ParticleEffect.SMOKE_NORMAL.display(location, amount, xOffset, yOffset, zOffset);
-            //location.getWorld().spawnParticle(Particle.CAMPFIRE_SIGNAL_SMOKE, xOffset, yOffset, zOffset, amount); <-- not working for me, can try again later.
-            //------------------------------------
             ApplyFissionMark(location);
 
 
@@ -178,8 +171,8 @@ public class Fission extends FireAbility implements AddonAbility {
                 iter.remove();
                 continue;
             }
-            Location affectedLocation = victim.getLocation().clone();
-            Location playerLocation = player.getLocation().clone();
+            Location affectedLocation = ((LivingEntity) victim).getEyeLocation().clone();
+            Location playerLocation = player.getEyeLocation().clone();
 
             double distanceToVictim = playerLocation.distance(affectedLocation);
             int dynamicRange = (int) Math.ceil(distanceToVictim);
@@ -220,11 +213,19 @@ public class Fission extends FireAbility implements AddonAbility {
                 Location left = projectileLocation.clone().add(perpendicular.clone().multiply(curve));
                 Location right = projectileLocation.clone().add(perpendicular.clone().multiply(-curve));
 
+
+
                 playFirebendingSound(left);
                 playFirebendingSound(right);
 
                 playFirebendingParticles(left, amount, xOffset, yOffset, zOffset);
                 playFirebendingParticles(right, amount, xOffset, yOffset, zOffset);
+
+                ParticleEffect.CAMPFIRE_COSY_SMOKE.display(left, amount, xOffset, yOffset, zOffset);
+                ParticleEffect.CAMPFIRE_COSY_SMOKE.display(right, amount, xOffset, yOffset, zOffset);
+
+                ParticleEffect.SMOKE_NORMAL.display(left, amount, xOffset, yOffset, zOffset);
+                ParticleEffect.SMOKE_NORMAL.display(right, amount, xOffset, yOffset, zOffset);
 
                 projectileTravelled++;
             }
@@ -249,14 +250,12 @@ public class Fission extends FireAbility implements AddonAbility {
 
             if (currentTime - markTime >= markduration) {
                 iter.remove();
-                ProjectKorra.log.info("Mark expired for entity: " + entityUUID);
                 continue;
             }
 
             Entity entity = Bukkit.getEntity(entityUUID);
             if (entity == null || entity.isDead()) {
                 iter.remove();
-                ProjectKorra.log.info("Removed mark from null/dead entity");
                 continue;
             }
 
@@ -266,11 +265,15 @@ public class Fission extends FireAbility implements AddonAbility {
 
                 if (GeneralMethods.isRegionProtectedFromBuild(this, affectedLocation)) {
                     iter.remove();
-                    ProjectKorra.log.info("Removed mark from protected region");
                     break;
                 }
 
-                affectedLocation.getWorld().spawnParticle(Particle.WAX_ON, affectedLocation, 5, 0.2, 0.5, 0.2, 0.1);
+                affectedLocation.getWorld().spawnParticle(Particle.ANGRY_VILLAGER, affectedLocation, 3, 0.3, 0.5, 0.3, 0.1);
+                affectedLocation.getWorld().spawnParticle(Particle.CRIT, affectedLocation, 2, 0.2, 0.3, 0.2, 0.1);
+
+                affectedLocation.getWorld().spawnParticle(Particle.ENCHANT, affectedLocation, 4, 0.5, 0.8, 0.5, 0.8);
+
+                affectedLocation.getWorld().spawnParticle(Particle.FLAME, affectedLocation, 1, 0.2, 0.2, 0.2, 0.02);
 
                 if ((currentTime - markTime) % 1000 < 50) {
                     affectedLocation.getWorld().playSound(affectedLocation, Sound.ENTITY_FIREWORK_ROCKET_TWINKLE, 2f, 2f);
@@ -290,7 +293,6 @@ public class Fission extends FireAbility implements AddonAbility {
     }
 
 
-    // boring slop
     @Override
     public void load() {
         ProjectKorra.plugin.getServer().getPluginManager().registerEvents(new FissionListener(), ProjectKorra.plugin);
