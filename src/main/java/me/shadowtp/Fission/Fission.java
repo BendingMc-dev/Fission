@@ -31,7 +31,7 @@ public class Fission extends FireAbility implements AddonAbility {
     @Attribute(Attribute.DAMAGE)
     private final double damage;
     private final double speed;
-    private int travelled;
+    private double travelled;
     private Vector direction;
     private final long markduration;
     public Set<Entity> targets = new HashSet<>();
@@ -81,9 +81,8 @@ public class Fission extends FireAbility implements AddonAbility {
             int zOffset = 0;
             int amount = 1;
 
-            direction = player.getEyeLocation().getDirection();
-            direction.multiply(1);
-            location = location.add(direction);
+            direction = player.getEyeLocation().getDirection().normalize().clone();
+            location = location.add(direction.clone().normalize().multiply(amount));
 
             if (GeneralMethods.isSolid(location.getBlock()) || isWater(location.getBlock())) {
                 break;
@@ -101,7 +100,7 @@ public class Fission extends FireAbility implements AddonAbility {
             ApplyFissionMark(location);
 
 
-            travelled++;
+            travelled+=speed;
         }
 
 
@@ -125,11 +124,9 @@ public class Fission extends FireAbility implements AddonAbility {
 
             if (victim.isDead()) {
                 this.remove();
-                ProjectKorra.log.severe("George?");
                 break;
             } else if (affectedLocation != null && GeneralMethods.isRegionProtectedFromBuild(this, this.location)) {
                 this.remove();
-                ProjectKorra.log.severe("HBadd bugaer?");
                 break;
             }
 
@@ -138,14 +135,12 @@ public class Fission extends FireAbility implements AddonAbility {
                 }
 
                 markedTarget.put(victim.getUniqueId(), startTime);
-                ProjectKorra.log.severe("Marked entity: " + victim.getUniqueId() + "Type:" + victim.getType());
 
         }
     }
 
 
     public void BigSparkyBoomBoom() {
-        ProjectKorra.log.info("Big Sparky Boom Boom");
 
         if (markedTarget.isEmpty()) { return; }
 
@@ -178,7 +173,7 @@ public class Fission extends FireAbility implements AddonAbility {
             int dynamicRange = (int) Math.ceil(distanceToVictim);
             Vector directionToPlayer = playerLocation.toVector().subtract(affectedLocation.toVector()).normalize();
             Location projectileLocation = affectedLocation.clone();
-            int projectileTravelled = 0;
+            double projectileTravelled = 0;
 
 
             affectedLocation.getWorld().spawnParticle(Particle.EXPLOSION, affectedLocation, 5, 1, 1, 1, 0.1);
@@ -187,25 +182,22 @@ public class Fission extends FireAbility implements AddonAbility {
 
             affectedLocation.getWorld().playSound(victim, Sound.ENTITY_GENERIC_EXPLODE, 2f, 1);
             while (projectileTravelled <= dynamicRange) {
-                ProjectKorra.log.info("DistanceToVictim:" + distanceToVictim + "\nDynamic Range:" + dynamicRange + "\n");
                 int xOffset = 0;
                 int yOffset = 0;
                 int zOffset = 0;
                 int amount = 1;
 
-                projectileLocation = projectileLocation.add(directionToPlayer.clone().multiply(1));
+                projectileLocation = projectileLocation.add(directionToPlayer.clone().normalize().multiply(speed));
 
                 if (GeneralMethods.isSolid(projectileLocation.getBlock()) || isWater(projectileLocation.getBlock())) {
-                    ProjectKorra.log.info("solid nonce");
                     break;
                 }
                 if (projectileTravelled >= dynamicRange) {
-                    ProjectKorra.log.info("fuck ass range brah");
                     break;
                 }
 
                 // Calculate curves effect
-                double t = (double) projectileTravelled / dynamicRange;
+                double t = projectileTravelled / dynamicRange;
                 double curve = Math.sin(Math.PI * t) * maxspread;
 
                 Vector perpendicular = directionToPlayer.clone().crossProduct(new Vector(0, 1, 0)).normalize();
@@ -218,16 +210,13 @@ public class Fission extends FireAbility implements AddonAbility {
                 playFirebendingSound(left);
                 playFirebendingSound(right);
 
-                playFirebendingParticles(left, amount, xOffset, yOffset, zOffset);
-                playFirebendingParticles(right, amount, xOffset, yOffset, zOffset);
-
-                ParticleEffect.CAMPFIRE_COSY_SMOKE.display(left, amount, xOffset, yOffset, zOffset);
-                ParticleEffect.CAMPFIRE_COSY_SMOKE.display(right, amount, xOffset, yOffset, zOffset);
+                playFirebendingParticles(left, /*amount*/1, /*x*/ 0.1, /*y*/0.1, /*z*/0.1);
+                playFirebendingParticles(right, 1, 0.1, 0.1, 0.1);
 
                 ParticleEffect.SMOKE_NORMAL.display(left, amount, xOffset, yOffset, zOffset);
                 ParticleEffect.SMOKE_NORMAL.display(right, amount, xOffset, yOffset, zOffset);
 
-                projectileTravelled++;
+                projectileTravelled+=speed;
             }
             DamageHandler.damageEntity(victim, damage, this);
             iter.remove();
@@ -296,8 +285,6 @@ public class Fission extends FireAbility implements AddonAbility {
     @Override
     public void load() {
         ProjectKorra.plugin.getServer().getPluginManager().registerEvents(new FissionListener(), ProjectKorra.plugin);
-        ProjectKorra.log.info("Fission successfully loaded!");
-        ProjectKorra.log.info("Can you hear the music...?");
         ConfigManager.getConfig().addDefault(path + "Cooldown", 5000);
         ConfigManager.getConfig().addDefault(path + "Range", 40);
         ConfigManager.getConfig().addDefault(path + "Damage", 5);
