@@ -53,6 +53,7 @@ public class Firearms extends FireAbility implements AddonAbility {
     private double liftPower;
     private long fallSaveCooldown;
     private int ambientParticles;
+    private long ambientInterval;
 
     private long lastVolleyTime;
     private long lastLightningTime;
@@ -88,6 +89,7 @@ public class Firearms extends FireAbility implements AddonAbility {
         liftPower = getConfig().getDouble(path + "LiftPower");
         fallSaveCooldown = getConfig().getLong(path + "FallSaveCooldown");
         ambientParticles = getConfig().getInt(path + "AmbientParticles");
+        ambientInterval = getConfig().getLong(path + "AmbientInterval");
         location = player.getLocation().clone();
 
         start();
@@ -267,7 +269,7 @@ public class Firearms extends FireAbility implements AddonAbility {
     }
 
     private void playAmbientEffects() {
-        if (!isReady(lastAmbientTime, 150L)) {
+        if (!isReady(lastAmbientTime, ambientInterval)) {
             return;
         }
         lastAmbientTime = System.currentTimeMillis();
@@ -374,6 +376,7 @@ public class Firearms extends FireAbility implements AddonAbility {
         ConfigManager.getConfig().addDefault(path + "LiftPower", 0.9);
         ConfigManager.getConfig().addDefault(path + "FallSaveCooldown", 1000);
         ConfigManager.getConfig().addDefault(path + "AmbientParticles", 4);
+        ConfigManager.getConfig().addDefault(path + "AmbientInterval", 150);
 
         ConfigManager.defaultConfig.save();
     }
@@ -425,6 +428,6 @@ public class Firearms extends FireAbility implements AddonAbility {
 
     @Override
     public String getVersion() {
-        return "2.0";
+        return "1.0";
     }
 }
