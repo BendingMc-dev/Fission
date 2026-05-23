@@ -31,28 +31,28 @@ import java.util.Set;
 public class Firearms extends FireAbility implements AddonAbility {
 
     private final String path = "ExtraAbilities.ShadowTP.Firearms.";
-    private final long duration;
+    private long duration;
     @Attribute(Attribute.COOLDOWN)
-    private final long cooldown;
+    private long cooldown;
     @Attribute(Attribute.DAMAGE)
-    private final double volleyDamage;
+    private double volleyDamage;
     @Attribute(Attribute.RANGE)
-    private final double volleyRange;
-    private final long volleyCooldown;
-    private final double volleySpeed;
-    private final double volleyHitbox;
-    private final double lightningRange;
-    private final double lightningDamage;
-    private final long lightningCooldown;
-    private final double chainRadius;
-    private final double chainDamage;
-    private final long dashCooldown;
-    private final double dashSpeed;
-    private final double dashLift;
-    private final long liftCooldown;
-    private final double liftPower;
-    private final long fallSaveCooldown;
-    private final int ambientParticles;
+    private double volleyRange;
+    private long volleyCooldown;
+    private double volleySpeed;
+    private double volleyHitbox;
+    private double lightningRange;
+    private double lightningDamage;
+    private long lightningCooldown;
+    private double chainRadius;
+    private double chainDamage;
+    private long dashCooldown;
+    private double dashSpeed;
+    private double dashLift;
+    private long liftCooldown;
+    private double liftPower;
+    private long fallSaveCooldown;
+    private int ambientParticles;
 
     private long lastVolleyTime;
     private long lastLightningTime;
@@ -65,6 +65,10 @@ public class Firearms extends FireAbility implements AddonAbility {
 
     public Firearms(Player player) {
         super(player);
+        if (!this.bPlayer.canBend(this)) {
+            return;
+        }
+
         duration = getConfig().getLong(path + "Duration");
         cooldown = getConfig().getLong(path + "Cooldown");
         volleyDamage = getConfig().getDouble(path + "VolleyDamage");
@@ -85,10 +89,6 @@ public class Firearms extends FireAbility implements AddonAbility {
         fallSaveCooldown = getConfig().getLong(path + "FallSaveCooldown");
         ambientParticles = getConfig().getInt(path + "AmbientParticles");
         location = player.getLocation().clone();
-
-        if (!this.bPlayer.canBend(this)) {
-            return;
-        }
 
         start();
         playActivationEffects();
@@ -278,10 +278,11 @@ public class Firearms extends FireAbility implements AddonAbility {
         Location leftHand = base.clone().add(right.clone().multiply(-1));
         Location rightHand = base.clone().add(right);
 
+        int sparkParticles = Math.max(1, (int) Math.ceil(ambientParticles / 2.0));
         leftHand.getWorld().spawnParticle(Particle.FLAME, leftHand, ambientParticles, 0.1, 0.1, 0.1, 0.01);
         rightHand.getWorld().spawnParticle(Particle.FLAME, rightHand, ambientParticles, 0.1, 0.1, 0.1, 0.01);
-        leftHand.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, leftHand, ambientParticles / 2, 0.1, 0.1, 0.1, 0.01);
-        rightHand.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, rightHand, ambientParticles / 2, 0.1, 0.1, 0.1, 0.01);
+        leftHand.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, leftHand, sparkParticles, 0.1, 0.1, 0.1, 0.01);
+        rightHand.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, rightHand, sparkParticles, 0.1, 0.1, 0.1, 0.01);
     }
 
     private void playLightningChain(Location impact) {
