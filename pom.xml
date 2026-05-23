@@ -5,11 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>me.shadowtp</groupId>
-    <artifactId>Fission</artifactId>
+    <artifactId>Firearms</artifactId>
     <version>1.0</version>
     <packaging>jar</packaging>
 
-    <name>Fission</name>
+    <name>Firearms</name>
 
 
     <properties>
